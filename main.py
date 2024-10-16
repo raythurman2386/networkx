@@ -123,3 +123,68 @@ nx.draw_networkx_edge_labels(W, pos, edge_labels=edge_labels)
 path_edges = list(zip(shortest_path, shortest_path[1:]))
 nx.draw_networkx_edges(W, pos, edgelist=path_edges, edge_color='r', width=2)
 plt.show()
+
+# Create a directed graph to represent the river system with flowlines
+R = nx.DiGraph()
+
+# Add nodes representing points in the river system
+R.add_nodes_from(["Source", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "Sink"])
+
+# Add edges with flow rate attributes (in cubic meters per second, for example)
+R.add_edge("Source", "A", flow_rate=10)
+R.add_edge("Source", "B", flow_rate=15)
+R.add_edge("A", "C", flow_rate=7)
+R.add_edge("A", "D", flow_rate=3)
+R.add_edge("B", "D", flow_rate=10)
+R.add_edge("B", "E", flow_rate=5)
+R.add_edge("C", "F", flow_rate=7)
+R.add_edge("D", "G", flow_rate=8)
+R.add_edge("E", "G", flow_rate=6)
+R.add_edge("E", "H", flow_rate=4)
+R.add_edge("F", "I", flow_rate=5)
+R.add_edge("G", "J", flow_rate=12)
+R.add_edge("H", "J", flow_rate=4)
+R.add_edge("I", "K", flow_rate=2)
+R.add_edge("J", "L", flow_rate=9)
+R.add_edge("K", "L", flow_rate=3)
+R.add_edge("L", "Sink", flow_rate=14)
+
+# Print nodes and edges with attributes to verify the graph structure
+print("Nodes of river system graph R:")
+print(R.nodes(data=True))
+print("Edges with flow rates in river system graph R:")
+print(R.edges(data=True))
+
+# Draw the river system graph
+pos = nx.spring_layout(R)  # Layout for better visual representation
+nx.draw(R, pos, with_labels=True, node_color='lightblue', arrows=True)
+edge_labels = nx.get_edge_attributes(R, 'flow_rate')
+nx.draw_networkx_edge_labels(R, pos, edge_labels=edge_labels)
+plt.title("River System Flowlines Graph")
+plt.show()
+
+# Example: Finding the shortest path based on flow rate from Source to Sink
+shortest_path = nx.shortest_path(R, source="Source", target="Sink", weight='flow_rate')
+print("Shortest path from Source to Sink in river system graph R by flow rate:")
+print(shortest_path)
+
+# Draw the river system graph with shortest path highlighted
+nx.draw(R, pos, with_labels=True, node_color='lightblue', arrows=True)
+nx.draw_networkx_edge_labels(R, pos, edge_labels=edge_labels)
+path_edges = list(zip(shortest_path, shortest_path[1:]))
+nx.draw_networkx_edges(R, pos, edgelist=path_edges, edge_color='r', width=2)
+plt.title("Shortest Path in River System Flowlines Graph by Flow Rate")
+plt.show()
+
+# Example: Calculating and visualizing the maximum flow
+# Using Source and Sink for maximum flow calculation
+flow_value, flow_dict = nx.maximum_flow(R, "Source", "Sink", capacity='flow_rate')
+print("Maximum flow from Source to Sink in river system graph R:")
+print(flow_value)
+
+# Draw the river system graph with edges colored by flow rates
+edge_colors = ['blue' if edge in path_edges else 'black' for edge in R.edges()]
+nx.draw(R, pos, with_labels=True, node_color='lightblue', arrows=True, edge_color=edge_colors)
+nx.draw_networkx_edge_labels(R, pos, edge_labels=edge_labels)
+plt.title("Maximum Flow in River System Flowlines Graph")
+plt.show()

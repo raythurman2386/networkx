@@ -2,7 +2,8 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import geopandas as gpd
 from shapely.geometry import Point
-
+from plotly.offline import plot
+import plotly.graph_objs as go
 
 def basic_graph_operations():
     """Basic Graph Operations: Adding and Removing Nodes and Edges"""
@@ -207,6 +208,155 @@ def example_nhd():
         print(f"Node: {node}, Centrality: {centrality[node]}")
 
 
+def minimum_spanning_tree_example():
+    """Minimum Spanning Tree: Kruskal's Algorithm Example"""
+    # Create a weighted undirected graph
+    G = nx.Graph()
+    edges = [
+        ('A', 'B', 4), ('A', 'H', 8),
+        ('B', 'C', 8), ('B', 'H', 11),
+        ('C', 'D', 7), ('C', 'F', 4), ('C', 'I', 2),
+        ('D', 'E', 9), ('D', 'F', 14),
+        ('E', 'F', 10),
+        ('F', 'G', 2),
+        ('G', 'H', 1), ('G', 'I', 6),
+        ('H', 'I', 7),
+    ]
+    G.add_weighted_edges_from(edges)
+
+    # Compute the Minimum Spanning Tree using Kruskal's algorithm
+    mst = nx.minimum_spanning_tree(G, algorithm='kruskal')
+
+    # Print the edges in the MST
+    print("Edges in the Minimum Spanning Tree:")
+    for u, v, weight in mst.edges(data='weight'):
+        print(f"({u}, {v}, {weight})")
+
+    # Visualize the original graph and the MST
+    pos = nx.spring_layout(G)
+
+    plt.figure(figsize=(12, 6))
+
+    # Original Graph
+    plt.subplot(121)
+    nx.draw(G, pos, with_labels=True, node_color='lightblue', edge_color='gray')
+    labels = nx.get_edge_attributes(G, 'weight')
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
+    plt.title("Original Graph")
+
+    # Minimum Spanning Tree
+    plt.subplot(122)
+    nx.draw(mst, pos, with_labels=True, node_color='lightgreen', edge_color='red')
+    labels = nx.get_edge_attributes(mst, 'weight')
+    nx.draw_networkx_edge_labels(mst, pos, edge_labels=labels)
+    plt.title("Minimum Spanning Tree")
+
+    plt.show()
+
+
+def interactive_graph_visualization():
+    """Interactive Graph Visualization with Plotly"""
+    # Create a star graph
+    G = nx.star_graph(n=10)
+
+    # Compute positions for all nodes
+    pos = nx.spring_layout(G)
+
+    # Create edge traces
+    edge_trace = go.Scatter(
+        x=[],
+        y=[],
+        line=dict(width=0.5, color='#888'),
+        hoverinfo='none',
+        mode='lines')
+
+    for edge in G.edges():
+        x0, y0 = pos[edge[0]]
+        x1, y1 = pos[edge[1]]
+        edge_trace['x'] += (x0, x1, None)
+        edge_trace['y'] += (y0, y1, None)
+
+    # Create node traces
+    node_trace = go.Scatter(
+        x=[],
+        y=[],
+        text=[],
+        mode='markers',
+        hoverinfo='text',
+        marker=dict(
+            showscale=True,
+            colorscale='YlGnBu',
+            reversescale=True,
+            color=[],
+            size=10,
+            colorbar=dict(
+                thickness=15,
+                title='Node Connections',
+                xanchor='left',
+                titleside='right'
+            ),
+            line_width=2))
+
+    for node in G.nodes():
+        x, y = pos[node]
+        node_trace['x'] += (x,)
+        node_trace['y'] += (y,)
+
+    for node, adjacents in G.adjacency():
+        node_trace['marker']['color'] += (len(adjacents),)
+        node_info = f'# of connections: {len(adjacents)}'
+        node_trace['text'] += (node_info,)
+
+    # Create the figure
+    fig = go.Figure(data=[edge_trace, node_trace],
+                    layout=go.Layout(
+                        title='<br>Interactive Network Graph',
+                        titlefont=dict(size=16),
+                        showlegend=False,
+                        hovermode='closest',
+                        margin=dict(b=20, l=5, r=5, t=40),
+                        annotations=[dict(
+                            text="Plotly NetworkX Integration",
+                            showarrow=False,
+                            xref="paper", yref="paper",
+                            x=0.005, y=-0.002)],
+                        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+                    )
+
+    # Display the plot
+    plot(fig)
+
+
+def dijkstra_shortest_path_example():
+    """Dijkstra's Algorithm: Shortest Paths in Weighted Graph"""
+    # Create a weighted directed graph
+    G = nx.DiGraph()
+    edges = [
+        ('A', 'B', 1), ('A', 'C', 4),
+        ('B', 'C', 2), ('B', 'D', 5),
+        ('C', 'D', 1)
+    ]
+    G.add_weighted_edges_from(edges)
+
+    # Compute the shortest path from 'A' to 'D' using Dijkstra's algorithm
+    path = nx.dijkstra_path(G, source='A', target='D', weight='weight')
+    print(f"Shortest path from 'A' to 'D': {path}")
+
+    # Visualize the graph
+    pos = nx.spring_layout(G)
+    edge_labels = nx.get_edge_attributes(G, 'weight')
+
+    nx.draw(G, pos, with_labels=True, node_color='lightblue', arrows=True)
+    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
+
+    # Highlight the shortest path
+    path_edges = list(zip(path, path[1:]))
+    nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color='red', width=2)
+    plt.title("Dijkstra's Shortest Path")
+    plt.show()
+
+
 def main():
     examples = {
         1: basic_graph_operations,
@@ -217,7 +367,10 @@ def main():
         6: clustering_coefficient,
         7: example_waterway,
         8: example_river_system,
-        9: example_nhd
+        9: example_nhd,
+        10: minimum_spanning_tree_example,
+        11: interactive_graph_visualization,
+        12: dijkstra_shortest_path_example,
     }
 
     while True:

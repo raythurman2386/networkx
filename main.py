@@ -161,7 +161,12 @@ def example_river_system():
     plt.show()
 
 
-def create_nhd_graph(shapefile_path, tolerance=1e-6):
+def create_nhd_graph(shapefile_path, tolerance=400):
+    # TODO: Refactor to grab one mainstem to follow and graph the proper flowline layout
+    """This is currently an incorrect implementation for a flowline network. Refactoring is needed to
+    properly connect the flowlines from the start and end points. I can look through our official codebase
+    to see how exactly we are doing that currently. I want to fully show one flowline with a correct layout if
+    similar to how we are doing conflation."""
     gdf = gpd.read_file(shapefile_path)
     G = nx.DiGraph()
     start_points, end_points = {}, {}

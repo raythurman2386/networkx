@@ -1,6 +1,7 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 import geopandas as gpd
+from typing import Dict, Tuple
 from shapely.geometry import Point
 from plotly.offline import plot
 import plotly.graph_objs as go
@@ -161,56 +162,128 @@ def example_river_system():
     plt.show()
 
 
-def create_nhd_graph(shapefile_path, tolerance=400):
-    # TODO: Refactor to grab one mainstem to follow and graph the proper flowline layout
-    """This is currently an incorrect implementation for a flowline network. Refactoring is needed to
-    properly connect the flowlines from the start and end points. I can look through our official codebase
-    to see how exactly we are doing that currently. I want to fully show one flowline with a correct layout if
-    similar to how we are doing conflation."""
+def determine_flow_direction(row) -> Tuple[Point, Point]:
+    """
+    Determines the upstream and downstream points based on the FLOWDIR field.
+
+    Args:
+        row: GeoDataFrame row containing flowline information
+
+    Returns:
+        Tuple of (upstream_point, downstream_point)
+    """
+    line = row.geometry
+    flowdir = row['flowdir']
+
+    start_point = Point(line.coords[0])
+    end_point = Point(line.coords[-1])
+
+    # With Flow = 1, Against Flow = 2, Uninitialized = 0
+    if flowdir == 1:
+        return (start_point, end_point)
+    elif flowdir == 2:
+        return (end_point, start_point)
+    else:
+        # Default to start to end if flow direction is unknown
+        return (start_point, end_point)
+
+def create_nhd_graph(shapefile_path: str, tolerance: float = 1) -> nx.DiGraph:
+    """
+    Creates a directed graph from NHD Flowline data.
+
+    Args:
+        shapefile_path: Path to the NHD Flowline shapefile
+        tolerance: Distance tolerance for connecting nodes (in the same units as the shapefile)
+
+    Returns:
+        NetworkX DiGraph representing the stream network
+    """
+    # Read the shapefile
     gdf = gpd.read_file(shapefile_path)
+
+    # Create directed graph
     G = nx.DiGraph()
-    start_points, end_points = {}, {}
 
+    # Store node locations and metadata
+    node_locations: Dict[str, Point] = {}
+
+    # First pass: Create nodes and store their locations
     for idx, row in gdf.iterrows():
-        line = row.geometry
-        start_points[idx] = Point(line.coords[0])
-        end_points[idx] = Point(line.coords[-1])
+        upstream_point, downstream_point = determine_flow_direction(row)
 
-    def find_nearest(point, points_dict):
-        return next((idx for idx, p in points_dict.items() if point.distance(p) <= tolerance), None)
+        # Create unique IDs for upstream and downstream nodes
+        upstream_id = f"node_{idx}_up"
+        downstream_id = f"node_{idx}_down"
 
-    for idx, row in gdf.iterrows():
-        line = row.geometry
-        start_node = find_nearest(Point(line.coords[0]), end_points) or idx
-        end_node = find_nearest(Point(line.coords[-1]), start_points) or f"{idx}_end"
-        G.add_edge(start_node, end_node)
+        # Store node locations
+        node_locations[upstream_id] = upstream_point
+        node_locations[downstream_id] = downstream_point
+
+        # Add edge with attributes
+        G.add_edge(
+            upstream_id,
+            downstream_id,
+            reachcode=row['reachcode'],
+            length=row['lengthkm'],
+            feature_type=row['ftype'],
+            geometry=row.geometry
+        )
+
+    # Second pass: Connect nodes that are within tolerance
+    nodes = list(node_locations.items())
+    for i, (node1_id, point1) in enumerate(nodes):
+        for node2_id, point2 in nodes[i+1:]:
+            if point1.distance(point2) <= tolerance:
+                # Avoid self-loops and ensure proper flow direction
+                if node1_id.endswith('_down') and node2_id.endswith('_up'):
+                    G.add_edge(node1_id, node2_id, connection_type='confluence')
+                elif node1_id.endswith('_up') and node2_id.endswith('_down'):
+                    G.add_edge(node2_id, node1_id, connection_type='confluence')
 
     return G
 
+def analyze_nhd_network(G: nx.DiGraph):
+    """
+    Analyzes and visualizes the NHD network.
 
-def example_nhd():
-    """National Hydrography Dataset Example"""
-    file_path = "NHDFlowline.shp"
-    nhd_graph = create_nhd_graph(file_path)
+    Args:
+        G: NetworkX DiGraph representing the stream network
+    """
+    print(f"Network Statistics:")
+    print(f"Number of nodes: {G.number_of_nodes()}")
+    print(f"Number of edges: {G.number_of_edges()}")
 
-    print(f"Number of nodes: {nhd_graph.number_of_nodes()}")
-    print(f"Number of edges: {nhd_graph.number_of_edges()}")
+    # Identify main stem (longest path)
+    try:
+        longest_path = max(nx.all_simple_paths(G,
+                                               source=list(G.nodes())[0],
+                                               target=list(G.nodes())[-1]),
+                           key=len)
+        print(f"Length of longest path: {len(longest_path)}")
+    except:
+        print("Could not determine longest path")
 
-    pos = nx.spring_layout(nhd_graph)
-    plt.figure(figsize=(12, 8))
-    nx.draw(nhd_graph, pos, node_size=20, node_color='blue', with_labels=False, arrows=True)
+    # Visualize the network
+    plt.figure(figsize=(15, 10))
+    pos = nx.spring_layout(G, k=2, iterations=50)
+
+    # Draw the network
+    nx.draw(G, pos,
+            node_size=20,
+            node_color='blue',
+            edge_color='gray',
+            with_labels=False,
+            arrows=True,
+            arrowsize=10)
+
     plt.title("NHD Flowlines Network")
     plt.show()
 
-    connected_components = list(nx.weakly_connected_components(nhd_graph))
-    print(f"Number of weakly connected components: {len(connected_components)}")
-    print(f"Size of the largest component: {len(max(connected_components, key=len))}")
-
-    centrality = nx.degree_centrality(nhd_graph)
-    top_5_central_nodes = sorted(centrality, key=centrality.get, reverse=True)[:5]
-    print("Top 5 nodes by degree centrality:")
-    for node in top_5_central_nodes:
-        print(f"Node: {node}, Centrality: {centrality[node]}")
+def example_nhd():
+    """Example usage with NHD data"""
+    file_path = "NHDFlowline.shp"
+    nhd_graph = create_nhd_graph(file_path)
+    analyze_nhd_network(nhd_graph)
 
 
 def minimum_spanning_tree_example():

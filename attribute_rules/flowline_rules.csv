@@ -1,0 +1,8 @@
+﻿NAME,DESCRIPTION,TYPE,SUBTYPE,FIELD,ISEDITABLE,TRIGGERINSERT,TRIGGERDELETE,TRIGGERUPDATE,SCRIPTEXPRESSION,ERRORNUMBER,ERRORMESSAGE,EXCLUDECLIENTEVALUATION,ISENABLED,BATCH,SEVERITY,TAGS,CATEGORY,CHECKPARAMETERS
+Null GNISID,Null GNISID's,VALIDATION,,,True,False,False,False,"if($feature.gnisid == Null) {
+return True;
+}",8675309,Error with Null gnisid,False,True,True,5,,0,"{""type"":""PropertySet"",""propertySetItems"":[]}"
+Arcade Table to Table,Arcade example of the same table to table rule we have been using. Any time I try to automate importing rule files I get an error due to the sql related rules and they don't transfer.,VALIDATION,,,True,False,False,False,"var relatedFeatures = FeatureSetByName($datastore, 'gnisConflationErrors', ['relevantID3DHP']);
+var matches = Filter(relatedFeatures, ""relevantID3DHP = '"" + $feature.id3dhp + ""'"");
+return Count(matches) > 0;",8675309,Error with arcade table to table,False,True,True,5,,0,"{""type"":""PropertySet"",""propertySetItems"":[]}"
+New Table To Table Attribute Rule,,VALIDATION,,,True,False,False,False,return true;,258,Table To Table Error,False,True,True,5,,9,"{""type"":""PropertySet"",""propertySetItems"":[""InputFilters"","""",""featurestocompare"",""gnisConflationErrors"",""attributecomparison"",""id3dhp = relevantID3DHP"",""invertRelation"",false,""ReviewerRuleType"",""10""]}"

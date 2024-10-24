@@ -47,7 +47,7 @@ def manage_attribute_rules(workspace):
                             existing_rules = arcpy.Describe(target).attributeRules
                             for rule in existing_rules:
                                 try:
-                                    arcpy.DeleteAttributeRule_management(target, rule.name)
+                                    arcpy.DeleteAttributeRule_management(target, rule['name'])
                                 except:
                                     pass
 

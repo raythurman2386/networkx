@@ -36,24 +36,24 @@ def copy_attribute_rules(workspace):
                     if len(desc['attributeRules']) > 0:
                         for ar in desc['attributeRules']:
                             try:
-                                logger.msg(f"\tProcessing rule: {ar.name}")
+                                logger.msg(f"\tProcessing rule: {ar['name']}")
                                 # Get all necessary properties from the rule
                                 rule_properties = {
-                                    "name": ar.name,
+                                    "name": ar['name'],
                                     # Esri added EsriArt to the type field for some reason: EsriArtValidation
-                                    "type": ar.type[7:].upper(),
-                                    "script_expression": ar.scriptExpression,
-                                    "error_number": ar.errorNumber,
-                                    "error_message": ar.errorMessage,
-                                    "severity": ar.severity,
-                                    "triggering_events": ar.triggeringEvents,
-                                    "description": ar.description,
-                                    "tags": ar.tags
+                                    "type": ar['type'][7:].upper(),
+                                    "script_expression": ar['scriptExpression'],
+                                    "error_number": ar['errorNumber'],
+                                    "error_message": ar['errorMessage'],
+                                    "severity": ar['severity'],
+                                    "triggering_events": ar['triggeringEvents'],
+                                    "description": ar['description'],
+                                    "tags": ar['tags']
                                 }
 
                                 # Remove any existing rule with the same name
                                 try:
-                                    arcpy.DeleteAttributeRule_management(target, ar.name)
+                                    arcpy.DeleteAttributeRule_management(target, ar['name'])
                                 except:
                                     pass
 
@@ -62,10 +62,10 @@ def copy_attribute_rules(workspace):
                                     **rule_properties
                                 )
 
-                                logger.msg(f"\tSuccessfully added rule: {ar.name}")
+                                logger.msg(f"\tSuccessfully added rule: {ar['name']}")
 
                             except Exception as e:
-                                logger.msg(f"\tError processing rule {ar.name}: {str(e)}")
+                                logger.msg(f"\tError processing rule {ar['name']}: {str(e)}")
                                 continue
                     else:
                         logger.msg(f"\tNo attribute rules found in {filename}")

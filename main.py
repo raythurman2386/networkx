@@ -187,6 +187,7 @@ def determine_flow_direction(row) -> Tuple[Point, Point]:
         # Default to start to end if flow direction is unknown
         return (start_point, end_point)
 
+
 def create_nhd_graph(shapefile_path: str, tolerance: float = 1) -> nx.DiGraph:
     """
     Creates a directed graph from NHD Flowline data.
@@ -242,6 +243,7 @@ def create_nhd_graph(shapefile_path: str, tolerance: float = 1) -> nx.DiGraph:
 
     return G
 
+
 def analyze_nhd_network(G: nx.DiGraph):
     """
     Analyzes and visualizes the NHD network.
@@ -278,6 +280,7 @@ def analyze_nhd_network(G: nx.DiGraph):
 
     plt.title("NHD Flowlines Network")
     plt.show()
+
 
 def example_nhd():
     """Example usage with NHD data"""

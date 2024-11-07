@@ -479,6 +479,95 @@ def build_network_from_flowlines(flowline_fc):
     return G
 
 
+def build_and_visualize_network(flowline_fc, output_path=None):
+    """
+    Build a directed graph from flowline features using NetworkX and visualize it.
+
+    Parameters:
+    flowline_fc: Input flowline feature class
+    output_path: Optional path to save the visualization
+
+    Returns:
+    G: NetworkX DiGraph object
+    """
+    G = nx.DiGraph()
+
+    # Dictionary to store line endpoints and their coordinates for visualization
+    endpoints = defaultdict(list)
+    node_positions = {}  # For storing spatial positions of nodes
+
+    # First pass: collect all endpoints
+    with arcpy.da.SearchCursor(flowline_fc, ['id3dhp', 'SHAPE@']) as cursor:
+        for row in cursor:
+            line_id = row[0]
+            geometry = row[1]
+            start_point = geometry.firstPoint
+            end_point = geometry.lastPoint
+
+            # Store coordinates as tuples
+            start_coords = (start_point.X, start_point.Y)
+            end_coords = (end_point.X, end_point.Y)
+
+            # Store node positions for visualization
+            node_positions[line_id] = ((start_coords[0] + end_coords[0])/2,
+                                       (start_coords[1] + end_coords[1])/2)
+
+            endpoints[start_coords].append((line_id, 'start'))
+            endpoints[end_coords].append((line_id, 'end'))
+
+    # Second pass: build network connections
+    edge_colors = []  # Store edge colors for visualization
+    for coords, features in endpoints.items():
+        if len(features) > 1:  # Connection point
+            for f1 in features:
+                for f2 in features:
+                    if f1 != f2:
+                        if f1[1] == 'end' and f2[1] == 'start':
+                            # Add directed edge from f1 to f2
+                            G.add_edge(f1[0], f2[0])
+                            edge_colors.append('blue')  # Default edge color
+
+    # Visualization
+    plt.figure(figsize=(15, 15))
+
+    # Draw the network
+    nx.draw(G, pos=node_positions,
+            with_labels=True,
+            node_color='lightblue',
+            node_size=500,
+            edge_color=edge_colors,
+            arrowsize=20,
+            font_size=8,
+            font_weight='bold')
+
+    # Add title
+    plt.title("Flow Network Visualization", pad=20, size=16)
+
+    # Add legend
+    plt.plot([], [], 'b->', label='Flow Direction')
+    plt.legend(loc='upper right')
+
+    # Add some network statistics as text
+    stats_text = (f"Network Statistics:\n"
+                  f"Nodes: {G.number_of_nodes()}\n"
+                  f"Edges: {G.number_of_edges()}\n"
+                  f"Connected Components: {nx.number_weakly_connected_components(G)}")
+
+    plt.text(0.02, 0.98, stats_text,
+             transform=plt.gca().transAxes,
+             bbox=dict(facecolor='white', alpha=0.8),
+             verticalalignment='top')
+
+    # Save or show the plot
+    if output_path:
+        plt.savefig(output_path, bbox_inches='tight', dpi=300)
+        plt.close()
+    else:
+        plt.show()
+
+    return G
+
+
 def main():
     examples = {
         1: basic_graph_operations,

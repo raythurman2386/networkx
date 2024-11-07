@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import networkx as nx
 import matplotlib.pyplot as plt
 import geopandas as gpd
@@ -436,6 +438,45 @@ def dijkstra_shortest_path_example():
     nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color='red', width=2)
     plt.title("Dijkstra's Shortest Path")
     plt.show()
+
+
+def build_network_from_flowlines(flowline_fc):
+    """
+    Build a directed graph from flowline features using NetworkX.
+    Uses geometry to determine connectivity.
+    """
+    G = nx.DiGraph()
+
+    # Dictionary to store line endpoints
+    endpoints = defaultdict(list)
+
+    # First pass: collect all endpoints
+    with arcpy.da.SearchCursor(flowline_fc, ['id3dhp', 'SHAPE@']) as cursor:
+        for row in cursor:
+            line_id = row[0]
+            geometry = row[1]
+            start_point = geometry.firstPoint
+            end_point = geometry.lastPoint
+
+            # Store coordinates as tuples for easy comparison
+            start_coords = (start_point.X, start_point.Y)
+            end_coords = (end_point.X, end_point.Y)
+
+            endpoints[start_coords].append((line_id, 'start'))
+            endpoints[end_coords].append((line_id, 'end'))
+
+    # Second pass: build network connections
+    # Assumes that where lines connect, one's end point matches another's start point
+    for coords, features in endpoints.items():
+        if len(features) > 1:  # Connection point
+            for f1 in features:
+                for f2 in features:
+                    if f1 != f2:
+                        if f1[1] == 'end' and f2[1] == 'start':
+                            # Add directed edge from f1 to f2
+                            G.add_edge(f1[0], f2[0])
+
+    return G
 
 
 def main():

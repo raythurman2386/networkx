@@ -532,11 +532,11 @@ def build_and_visualize_network(flowline_fc, output_path=None):
 
     # Draw the network
     nx.draw(G, pos=node_positions,
-            with_labels=True,
+            with_labels=False,
             node_color='lightblue',
-            node_size=500,
+            node_size=3,
             edge_color=edge_colors,
-            arrowsize=20,
+            arrowsize=5,
             font_size=8,
             font_weight='bold')
 

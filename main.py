@@ -1,12 +1,16 @@
 from collections import defaultdict
-
+import fiona
 import networkx as nx
 import matplotlib.pyplot as plt
 import geopandas as gpd
 from typing import Dict, Tuple
-from shapely.geometry import Point
+from shapely.geometry import Point, LineString, MultiLineString
 from plotly.offline import plot
 import plotly.graph_objs as go
+
+
+fiona.supported_drivers['FileGDB'] = 'r'
+
 
 def basic_graph_operations():
     """Basic Graph Operations: Adding and Removing Nodes and Edges"""
@@ -479,44 +483,58 @@ def build_network_from_flowlines(flowline_fc):
     return G
 
 
-def build_and_visualize_network(flowline_fc, output_path=None):
+def build_and_visualize_network(flowline_path=r"D:\TestWorkspace\Working\ingest_300269.gdb",
+                                layer_name="flowline",
+                                output_path=None):
+    """Build a directed graph from flowline features using NetworkX and visualize it."""
     """
-    Build a directed graph from flowline features using NetworkX and visualize it.
-
     Parameters:
-    flowline_fc: Input flowline feature class
+    flowline_path: Path to the flowline shapefile or other supported geodata format
     output_path: Optional path to save the visualization
 
     Returns:
     G: NetworkX DiGraph object
     """
+    # Read the flowline data using GeoPandas
+
+    gdf = gpd.read_file(flowline_path, driver='FileGDB', layer=layer_name)
+    print(f"Successfully read {len(gdf)} features")
+    print("Available columns:", gdf.columns.tolist())
+
+
     G = nx.DiGraph()
 
     # Dictionary to store line endpoints and their coordinates for visualization
     endpoints = defaultdict(list)
-    node_positions = {}  # For storing spatial positions of nodes
+    node_positions = {}
 
     # First pass: collect all endpoints
-    with arcpy.da.SearchCursor(flowline_fc, ['id3dhp', 'SHAPE@']) as cursor:
-        for row in cursor:
-            line_id = row[0]
-            geometry = row[1]
-            start_point = geometry.firstPoint
-            end_point = geometry.lastPoint
+    for idx, row in gdf.iterrows():
+        try:
+            line_id = row['id3dhp']
+            geometry = row.geometry
+
+            # Get start and end points using the helper function
+            start_point, end_point = get_line_endpoints(geometry)
 
             # Store coordinates as tuples
-            start_coords = (start_point.X, start_point.Y)
-            end_coords = (end_point.X, end_point.Y)
+            start_coords = (start_point.x, start_point.y)
+            end_coords = (end_point.x, end_point.y)
 
             # Store node positions for visualization
             node_positions[line_id] = ((start_coords[0] + end_coords[0])/2,
                                        (start_coords[1] + end_coords[1])/2)
 
+            # Store endpoints
             endpoints[start_coords].append((line_id, 'start'))
             endpoints[end_coords].append((line_id, 'end'))
 
+        except Exception as e:
+            print(f"Error processing feature {idx}: {e}")
+            continue
+
     # Second pass: build network connections
-    edge_colors = []  # Store edge colors for visualization
+    edge_colors = []
     for coords, features in endpoints.items():
         if len(features) > 1:  # Connection point
             for f1 in features:
@@ -525,7 +543,12 @@ def build_and_visualize_network(flowline_fc, output_path=None):
                         if f1[1] == 'end' and f2[1] == 'start':
                             # Add directed edge from f1 to f2
                             G.add_edge(f1[0], f2[0])
-                            edge_colors.append('blue')  # Default edge color
+                            edge_colors.append('blue')
+
+    # Check if we have any nodes before visualization
+    if G.number_of_nodes() == 0:
+        print("No nodes were created in the network.")
+        return G
 
     # Visualization
     plt.figure(figsize=(15, 15))
@@ -568,6 +591,24 @@ def build_and_visualize_network(flowline_fc, output_path=None):
     return G
 
 
+def get_line_endpoints(geometry):
+    """
+    Helper function to get endpoints of a line geometry,
+    handling both simple LineString and MultiLineString cases.
+    """
+    if isinstance(geometry, LineString):
+        coords = list(geometry.coords)
+        return Point(coords[0]), Point(coords[-1])
+    elif isinstance(geometry, MultiLineString):
+        # For MultiLineString, we'll use the first and last points of the entire geometry
+        all_coords = []
+        for line in geometry.geoms:
+            all_coords.extend(list(line.coords))
+        return Point(all_coords[0]), Point(all_coords[-1])
+    else:
+        raise ValueError(f"Unexpected geometry type: {type(geometry)}")
+
+
 def main():
     examples = {
         1: basic_graph_operations,
@@ -582,6 +623,7 @@ def main():
         10: minimum_spanning_tree_example,
         11: interactive_graph_visualization,
         12: dijkstra_shortest_path_example,
+        13: build_and_visualize_network,
     }
 
     while True:

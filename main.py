@@ -483,13 +483,14 @@ def build_network_from_flowlines(flowline_fc):
     return G
 
 
-def build_and_visualize_network(flowline_path=r"D:\TestWorkspace\Working\ingest_300269.gdb",
-                                layer_name="flowline",
+def build_and_visualize_network(flowline_path,
+                                layer_name,
                                 output_path=None):
     """Build a directed graph from flowline features using NetworkX and visualize it."""
     """
     Parameters:
-    flowline_path: Path to the flowline shapefile or other supported geodata format
+    flowline_path: Path to the flowline geodatabase
+    layer_name: layer name for your test flowline data
     output_path: Optional path to save the visualization
 
     Returns:
